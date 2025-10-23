@@ -65,8 +65,11 @@ RUN chmod +x /opt/activate_fenics_complex.sh /opt/activate_fenics_real.sh
 
 # === Копирование скрипта инициализации ===
 COPY init_kernels.sh /opt/init_kernels.sh
-RUN chmod +x /opt/init_kernels.sh && /opt/init_kernels.sh
+RUN chmod +x /opt/init_kernels.sh
 
+# === Копирование энтрипоинта ===
+COPY entrypoint.sh /opt/entrypoint.sh
+RUN chmod +x /opt/entrypoint.sh
 
 # === Рабочая директория ===
 WORKDIR /opt/jupyterhub
@@ -74,5 +77,6 @@ WORKDIR /opt/jupyterhub
 # === Expose порт ===
 EXPOSE ${JUPYTERHUB_PORT}
 
-# === Запуск JupyterHub ===
+# === Запуск через entrypoint ===
+ENTRYPOINT ["/opt/entrypoint.sh"]
 CMD ["jupyterhub", "-f", "/etc/jupyterhub/jupyterhub_config.py"]
