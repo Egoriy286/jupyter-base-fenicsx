@@ -64,9 +64,6 @@ RUN chmod +x /opt/activate_fenics_complex.sh /opt/activate_fenics_real.sh
 COPY init_kernels.sh /opt/init_kernels.sh
 RUN chmod +x /opt/init_kernels.sh && /opt/init_kernels.sh
 
-# === Копирование примеров ===
-COPY examples/ ${NOTEBOOKS_PATH}/
-
 # === Рабочая директория ===
 WORKDIR /opt/jupyterhub
 
