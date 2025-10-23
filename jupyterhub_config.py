@@ -8,7 +8,7 @@ c.JupyterHub.port = int(os.getenv('JUPYTERHUB_PORT', 8000))
 c.JupyterHub.data_files_path = os.getenv('JUPYTERHUB_DATA_PATH', '/opt/jupyterhub_data')
 
 # === Простая аутентификация ===
-c.JupyterHub.authenticator_class = 'nativeauthenticator.NativeAuthenticator'
+c.JupyterHub.authenticator_class = 'jupyterhub_nativeauthenticator.NativeAuthenticator'
 
 # Разрешаем регистрацию (только один раз для трёх пользователей)
 c.NativeAuthenticator.open_signup = True

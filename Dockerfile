@@ -30,7 +30,10 @@ RUN add-apt-repository ppa:fenics-packages/fenics && \
     rm -rf /var/lib/apt/lists/*
 
 # === Установка Python пакетов ===
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir --upgrade pip
+
+# Понизить setuptools для совместимости с onetimepass
+RUN pip install --no-cache-dir "setuptools<70" wheel
 
 RUN pip install --no-cache-dir \
     jupyterhub \
@@ -63,6 +66,9 @@ RUN chmod +x /opt/activate_fenics_complex.sh /opt/activate_fenics_real.sh
 # === Копирование скрипта инициализации ===
 COPY init_kernels.sh /opt/init_kernels.sh
 RUN chmod +x /opt/init_kernels.sh && /opt/init_kernels.sh
+
+# === Копирование примеров ===
+COPY examples/ ${NOTEBOOKS_PATH}/
 
 # === Рабочая директория ===
 WORKDIR /opt/jupyterhub
