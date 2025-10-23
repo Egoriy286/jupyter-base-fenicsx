@@ -26,8 +26,10 @@ RUN apt-get update && apt-get install -y \
 # === Добавление репозитория FEniCSx ===
 RUN add-apt-repository ppa:fenics-packages/fenics && \
     apt-get update && \
-    apt-get install -y fenicsx && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    fenicsx \
+    python3-dolfinx \
+    && rm -rf /var/lib/apt/lists/*
 
 # === Установка Python пакетов ===
 RUN pip install --no-cache-dir --upgrade pip
