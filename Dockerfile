@@ -1,84 +1,59 @@
 FROM ubuntu:22.04
 
-# === Переменные окружения ===
-ENV DEBIAN_FRONTEND=noninteractive
-ENV JUPYTERHUB_PORT=8000
-ENV JUPYTERHUB_IP=0.0.0.0
-ENV JUPYTERHUB_DATA_PATH=/opt/jupyterhub_data
-ENV NOTEBOOKS_PATH=/opt/notebooks
-ENV PYTHONUNBUFFERED=1
-ENV TZ=UTC
-ENV FENICS_COMPLEX_MODE="source /usr/share/dolfinx/dolfinx-complex-mode"
-ENV FENICS_REAL_MODE="source /usr/share/dolfinx/dolfinx-real-mode"
-
-# === Установка зависимостей ===
+# Устанавливаем системные пакеты
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-dev \
-    software-properties-common \
     wget \
-    git \
-    curl \
     build-essential \
+    python3-pip \
+    libgl1-mesa-glx \
+    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
-# === Добавление репозитория FEniCSx ===
-RUN add-apt-repository ppa:fenics-packages/fenics && \
-    apt-get update && \
-    apt-get install -y \
-    fenicsx \
-    python3-dolfinx \
+RUN apt-get update && apt-get install -y \
+    wget build-essential python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# === Установка Python пакетов ===
-RUN pip install --no-cache-dir --upgrade pip
+# Устанавливаем Miniconda
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /root/miniconda3 && \
+    rm /tmp/miniconda.sh && \
+    /root/miniconda3/bin/conda init bash
 
-# Понизить setuptools для совместимости с onetimepass
-RUN pip install --no-cache-dir "setuptools<70" wheel
+ENV PATH=/root/miniconda3/bin:$PATH
 
-RUN pip install --no-cache-dir \
-    jupyterhub \
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+# Создаём conda-окружение с dolfinx и зависимостями
+RUN conda create -n fenicsx -c conda-forge python=3.10 fenics-dolfinx mpich pyvista meshio jupyter ipykernel -y && \
+    conda create -n fenicsx-complex -c conda-forge python=3.10 fenics-dolfinx petsc=*=complex* mpich pyvista meshio jupyter ipykernel -y && \
+    conda create -n fenics-legacy -c conda-forge python=3.10 fenics-dolfin mpich jupyter ipykernel -y
+
+RUN /bin/bash -c "source activate fenicsx && python -m ipykernel install --user --name=fenicsx --display-name 'FEniCSx (real)'" && \
+    /bin/bash -c 'source activate fenicsx-complex && python -m ipykernel install --user --name=fenicsx-complex --display-name "FEniCSx (complex)"' && \
+    /bin/bash -c 'source activate fenics-legacy && python -m ipykernel install --user --name=fenics-legacy --display-name "FEniCS Legacy"'
+
+
+WORKDIR /workspace
+
+# Обновляем pip и устанавливаем Jupyter Lab и дополнительные библиотеки
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir \
     jupyterlab \
-    jupyterhub-nativeauthenticator \
     notebook \
-    ipykernel \
+    ipywidgets \
+    matplotlib \
     numpy \
     scipy \
-    matplotlib \
     pandas \
-    sympy \
     meshio \
-    h5py
+    pyvista
 
-# === Создание директорий ===
-RUN mkdir -p ${JUPYTERHUB_DATA_PATH} && \
-    mkdir -p ${NOTEBOOKS_PATH} && \
-    chmod 755 ${JUPYTERHUB_DATA_PATH} && \
-    chmod 755 ${NOTEBOOKS_PATH}
+# Настраиваем права доступа
+RUN chmod -R 777 /workspace
 
-# === Копирование конфигурационных файлов ===
-COPY jupyterhub_config.py /etc/jupyterhub/jupyterhub_config.py
+# Открываем порт для Jupyter Lab
+EXPOSE 8888
 
-# === Копирование скриптов активации режимов ===
-COPY activate_fenics_complex.sh /opt/activate_fenics_complex.sh
-COPY activate_fenics_real.sh /opt/activate_fenics_real.sh
-RUN chmod +x /opt/activate_fenics_complex.sh /opt/activate_fenics_real.sh
-
-# === Копирование скрипта инициализации ===
-COPY init_kernels.sh /opt/init_kernels.sh
-RUN chmod +x /opt/init_kernels.sh
-
-# === Копирование энтрипоинта ===
-COPY entrypoint.sh /opt/entrypoint.sh
-RUN chmod +x /opt/entrypoint.sh
-
-# === Рабочая директория ===
-WORKDIR /opt/jupyterhub
-
-# === Expose порт ===
-EXPOSE ${JUPYTERHUB_PORT}
-
-# === Запуск через entrypoint ===
-ENTRYPOINT ["/opt/entrypoint.sh"]
-CMD ["jupyterhub", "-f", "/etc/jupyterhub/jupyterhub_config.py"]
+# Запуск Jupyter Lab
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
